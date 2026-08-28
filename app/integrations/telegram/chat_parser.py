@@ -2,8 +2,8 @@ import re
 from typing import Optional, Tuple
 from app.services.postponement_engine import PostponementDetector
 
-# Regex to find exactly a 10-digit number starting with 2 or 22
-TICKET_REGEX = re.compile(r'\b(2\d{9})\b')
+# Regex to find exactly a 10-digit number starting with 1 or 2
+TICKET_REGEX = re.compile(r'\b([12]\d{9})\b')
 
 # Keywords indicating a postponement
 POSTPONEMENT_KEYWORDS = [
