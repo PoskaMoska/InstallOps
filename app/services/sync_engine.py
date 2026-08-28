@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import uuid
 
 from app.schemas.external import EmployeeDTO, OrderDTO, InstallationDTO
-from app.models import Employee, Order, Installation, InstallationHistory, SyncRun
+from app.models import Employee, Order, Installation, InstallationHistory, SyncRun, Postponement
 from app.repositories import crud
 from app.core.logging import logger
 
