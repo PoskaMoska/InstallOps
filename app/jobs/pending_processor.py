@@ -65,25 +65,26 @@ async def process_pending_events_job():
                     status="postponed"
                 )
                 
-                await sync_service.process_installation(
+                postponement = await sync_service.process_installation(
                     inst_dto, 
                     event_id=str(event.id), 
                     raw_payload={"reason": event.extracted_reason, "from_chat": True}
                 )
                 
-                # Append directly to Google Sheets log
-                try:
-                    from app.integrations.google.sheets import GoogleSheetsProvider
-                    sheets = GoogleSheetsProvider()
-                    await sheets.append_postponement_log(
-                        ticket_number=event.ticket_number,
-                        employee_name=emp.name,
-                        tg_id=str(event.telegram_user_id),
-                        reason=event.extracted_reason or "Не указано",
-                        date_str=now.strftime("%Y-%m-%d %H:%M")
-                    )
-                except Exception as sheet_err:
-                    logger.error(f"Failed to append to Google Sheets: {sheet_err}")
+                # Append directly to Google Sheets log ONLY if it's a new postponement
+                if postponement:
+                    try:
+                        from app.integrations.google.sheets import GoogleSheetsProvider
+                        sheets = GoogleSheetsProvider()
+                        await sheets.append_postponement_log(
+                            ticket_number=event.ticket_number,
+                            employee_name=emp.name,
+                            tg_id=str(event.telegram_user_id),
+                            reason=event.extracted_reason or "Не указано",
+                            date_str=now.strftime("%Y-%m-%d %H:%M")
+                        )
+                    except Exception as sheet_err:
+                        logger.error(f"Failed to append to Google Sheets: {sheet_err}")
                 
                 event.status = "confirmed"
             except Exception as e:

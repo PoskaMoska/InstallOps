@@ -73,11 +73,13 @@ class SyncService:
         await self.db.flush()
         return order
 
-    async def process_installation(self, dto: InstallationDTO, event_id: str, raw_payload: dict) -> Installation:
+    async def process_installation(self, dto: InstallationDTO, event_id: str, raw_payload: dict = None) -> Optional[Postponement]:
         """
-        Idempotent processor for installation changes.
-        Creates InstallationHistory entry ONLY if date, employee or status changed.
+        Upserts an installation record, tracks changes in InstallationHistory,
+        and automatically calls PostponementDetector to detect postponements.
+        Returns the Postponement object if one was detected, else None.
         """
+        postponement = None
         order = await crud.get_order_by_ext_id(self.db, dto.order_external_id)
         if not order:
             raise ValueError(f"Order {dto.order_external_id} not found. Cannot process installation.")
@@ -173,4 +175,4 @@ class SyncService:
                 logger.debug(f"Event {event_id} ignored (idempotency): no changes for order {dto.order_external_id}")
         
         await self.db.flush()
-        return inst
+        return postponement
