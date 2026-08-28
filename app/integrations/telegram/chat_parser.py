@@ -7,7 +7,7 @@ TICKET_REGEX = re.compile(r'\b(2\d{9})\b')
 
 # Keywords indicating a postponement
 POSTPONEMENT_KEYWORDS = [
-    "перенос", "переношу", "отмена", "отбой", "перенесли"
+    "перенос", "перенесена", "перенести", "переносим", "сдвигаем"
 ]
 
 class ChatParser:
@@ -16,35 +16,33 @@ class ChatParser:
     ticket numbers and postponement reasons.
     """
     @staticmethod
-    def parse_message(text: str) -> Optional[Tuple[str, str]]:
-        """
-        Returns (ticket_number, reason) if it's a postponement message, 
-        else None.
-        """
-        if not text:
-            return None
-            
-        lower_text = text.lower()
-        
-        # 1. Quick check for intent
-        is_postponement = any(kw in lower_text for kw in POSTPONEMENT_KEYWORDS)
-        
-        # 2. Extract ticket
+    def extract_ticket(text: str) -> Optional[str]:
+        if not text: return None
         match = TICKET_REGEX.search(text)
-        
-        if is_postponement and match:
-            ticket_number = match.group(1)
-            # The rest of the message might be the reason
-            # Clean out the ticket number
-            cleaned_reason = text.replace(ticket_number, "")
-            # Remove common prefixes like "Заявка", "Заказ" case-insensitively
-            cleaned_reason = re.sub(r'(?i)\b(заявка|заказ|з\.)\b', '', cleaned_reason)
-            # Remove multiple spaces and strip
-            cleaned_reason = re.sub(r'\s+', ' ', cleaned_reason).strip()
-            
-            # Use our existing categorizer to see if it makes sense, 
-            # or just return the raw cleaned string
-            category = PostponementDetector.categorize_reason(cleaned_reason)
-            return (ticket_number, cleaned_reason)
-            
+        return match.group(1) if match else None
+
+    @staticmethod
+    def is_postponement_intent(text: str) -> bool:
+        if not text: return False
+        lower_text = text.lower()
+        return any(kw in lower_text for kw in POSTPONEMENT_KEYWORDS)
+
+    @staticmethod
+    def clean_reason(text: str, ticket: Optional[str] = None) -> str:
+        if not text: return ""
+        cleaned = text
+        if ticket:
+            cleaned = cleaned.replace(ticket, "")
+        # Remove common prefixes like "заявка", "з"
+        cleaned = re.sub(r'(?i)\b(заявка|заказ|з\.)\b', '', cleaned)
+        # Remove multiple spaces and strip
+        cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+        return cleaned
+
+    @staticmethod
+    def parse_message(text: str) -> Optional[Tuple[str, str]]:
+        ticket = ChatParser.extract_ticket(text)
+        is_postp = ChatParser.is_postponement_intent(text)
+        if ticket and is_postp:
+            return (ticket, ChatParser.clean_reason(text, ticket))
         return None

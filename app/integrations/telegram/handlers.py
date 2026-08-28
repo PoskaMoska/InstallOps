@@ -103,30 +103,49 @@ async def process_sheet_url(message: Message, state: FSMContext):
         await message.answer(f"⚠️ Таблица привязана, но не удалось её автоматически настроить. Убедись, что выдал права доступа.\nОшибка: {e}", reply_markup=get_admin_keyboard())
 
 @router.message(F.text)
-async def handle_group_messages(message: Message):
-    """
-    Listens to group messages, tries to parse a ticket and postponement intent.
-    Creates a PendingEvent in DB if found.
-    """
-    # Слушаем только в группах ИЛИ в личных сообщениях, если это пишет админ (для тестов)
+async def handle_group_messages(message: Message, state: FSMContext):
     if message.chat.type not in ["group", "supergroup"] and not is_admin(message.chat.id):
         return
         
     from app.integrations.telegram.chat_parser import ChatParser
-    parsed = ChatParser.parse_message(message.text)
+    import time
     
-    if parsed:
-        ticket_number, reason = parsed
+    ticket = ChatParser.extract_ticket(message.text)
+    is_postp = ChatParser.is_postponement_intent(message.text)
+    
+    data = await state.get_data()
+    last_ticket = data.get("last_ticket")
+    last_ticket_time = data.get("last_ticket_time", 0)
+    current_time = time.time()
+    
+    final_ticket = None
+    final_reason = None
+    
+    if ticket and is_postp:
+        final_ticket = ticket
+        final_reason = ChatParser.clean_reason(message.text, ticket)
+        await state.update_data(last_ticket=None, last_ticket_time=0)
+    elif ticket and not is_postp:
+        await state.update_data(last_ticket=ticket, last_ticket_time=current_time)
+        return
+    elif not ticket and is_postp:
+        if last_ticket and (current_time - last_ticket_time) <= 300:
+            final_ticket = last_ticket
+            final_reason = ChatParser.clean_reason(message.text, None)
+            await state.update_data(last_ticket=None, last_ticket_time=0)
+        else:
+            return
+    else:
+        return
         
+    if final_ticket:
         from app.models.pending import PendingEvent
         from app.models.employee import Employee
         from app.repositories import crud
         
         async with AsyncSessionLocal() as db:
-            # 1. Update or create the Employee with their REAL Telegram name
             emp = await crud.get_employee_by_telegram_id(db, str(message.from_user.id))
             real_name = message.from_user.full_name or message.from_user.first_name or f"TG User {message.from_user.id}"
-            
             if not emp:
                 emp = Employee(
                     external_id=f"tg-{message.from_user.id}",
@@ -135,22 +154,17 @@ async def handle_group_messages(message: Message):
                     status="active"
                 )
                 db.add(emp)
-            elif emp.name.startswith("TG User ") or emp.name == "Unknown":
+            else:
                 emp.name = real_name
             
-            # 2. Save the pending event
             pending = PendingEvent(
                 message_id=message.message_id,
                 chat_id=message.chat.id,
                 telegram_user_id=message.from_user.id,
-                ticket_number=ticket_number,
+                ticket_number=final_ticket,
                 raw_text=message.text,
-                extracted_reason=reason,
+                extracted_reason=final_reason,
                 status="pending"
             )
             db.add(pending)
             await db.commit()
-            
-            # Optionally, we can react to the message so the user knows it was caught
-            # await message.reply("👀 Зафиксировал возможный перенос. Жду 10 минут...")
-
