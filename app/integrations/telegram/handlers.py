@@ -4,7 +4,6 @@ from aiogram.types import Message
 from aiogram.filters import Command
 
 from app.db.session import AsyncSessionLocal
-from app.analytics.engine import AnalyticsEngine
 from app.core.config import settings
 
 router = Router()
@@ -23,7 +22,6 @@ class AdminStates(StatesGroup):
 def get_admin_keyboard():
     from app.core.config import settings
     buttons = [
-        [InlineKeyboardButton(text="📊 Статистика за месяц", callback_data="btn_stats")],
         [InlineKeyboardButton(text="🔗 Привязать Google Таблицу", callback_data="btn_set_sheet")]
     ]
     
@@ -44,12 +42,7 @@ async def cmd_start(message: Message, state: FSMContext):
         reply_markup=get_admin_keyboard()
     )
 
-@router.callback_query(F.data == "btn_stats")
-async def cb_stats(callback: CallbackQuery):
-    if not is_admin(callback.message.chat.id): return
-    await callback.answer()
-    # Просто переиспользуем функцию статистики, передав ей сообщение из коллбека
-    await cmd_stats(callback.message)
+
 
 @router.callback_query(F.data == "btn_set_sheet")
 async def cb_set_sheet(callback: CallbackQuery, state: FSMContext):
@@ -108,77 +101,6 @@ async def process_sheet_url(message: Message, state: FSMContext):
         await message.answer(f"✅ Таблица успешно привязана!\nID: `{sheet_id}`\nВкладка 'Логи' и заголовки созданы автоматически.", parse_mode="Markdown", reply_markup=get_admin_keyboard())
     except Exception as e:
         await message.answer(f"⚠️ Таблица привязана, но не удалось её автоматически настроить. Убедись, что выдал права доступа.\nОшибка: {e}", reply_markup=get_admin_keyboard())
-
-@router.message(Command("stats"))
-async def cmd_stats(message: Message):
-    if not is_admin(message.chat.id):
-        return
-        
-    now = datetime.now(timezone.utc)
-    start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    
-    async with AsyncSessionLocal() as db:
-        engine = AnalyticsEngine(db)
-        stats = await engine.calculate_period_stats(start_date=start_date, end_date=now)
-    
-    best_name = stats.best_employee.employee_name if stats.best_employee else "N/A"
-    best_rate = f"{stats.best_employee.postponement_rate:.2f}%" if stats.best_employee else "N/A"
-    
-    worst_name = stats.worst_employee.employee_name if stats.worst_employee else "N/A"
-    worst_count = stats.worst_employee.total_postponements if stats.worst_employee else 0
-    
-    text = (
-        f"📊 <b>Статистика за текущий месяц</b>\n\n"
-        f"Монтажей: {stats.total_installations}\n"
-        f"Заказов с переносами: {stats.installations_with_postponement}\n"
-        f"Всего переносов: {stats.total_postponements}\n"
-        f"% переносов: {stats.postponement_rate:.2f}%\n\n"
-        f"🏆 <b>Лучший показатель:</b>\n"
-        f"{best_name} — {best_rate}\n\n"
-        f"⚠️ <b>Больше всего переносов:</b>\n"
-        f"{worst_name} — {worst_count}"
-    )
-    
-    await message.answer(text, parse_mode="HTML")
-    
-@router.message(Command("employee"))
-async def cmd_employee(message: Message):
-    if not is_admin(message.chat.id):
-        return
-        
-    parts = message.text.split(maxsplit=1)
-    if len(parts) < 2:
-        await message.answer("Укажи имя монтажника: /employee Иван")
-        return
-        
-    emp_name = parts[1].strip().lower()
-    
-    now = datetime.now(timezone.utc)
-    start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    
-    async with AsyncSessionLocal() as db:
-        engine = AnalyticsEngine(db)
-        stats = await engine.calculate_period_stats(start_date, now)
-        
-    target = next((e for e in stats.employees if emp_name in e.employee_name.lower()), None)
-    
-    if not target:
-        await message.answer(f"Монтажник '{emp_name}' не найден.")
-        return
-        
-    text = (
-        f"👤 <b>{target.employee_name}</b>\n\n"
-        f"Монтажей: {target.total_installations}\n"
-        f"Заказов с переносами: {target.installations_with_postponement}\n"
-        f"Всего переносов: {target.total_postponements}\n"
-        f"% переносов: {target.postponement_rate:.2f}%\n\n"
-        f"📋 <b>По причинам:</b>\n"
-        f"Вина монтажника: {target.reasons_breakdown.get('employee_fault', 0)}\n"
-        f"Клиент: {target.reasons_breakdown.get('client_request', 0)}\n"
-        f"Техника: {target.reasons_breakdown.get('technical', 0)}\n"
-        f"Материалы: {target.reasons_breakdown.get('materials', 0)}\n"
-    )
-    await message.answer(text, parse_mode="HTML")
 
 @router.message(F.text)
 async def handle_group_messages(message: Message):
