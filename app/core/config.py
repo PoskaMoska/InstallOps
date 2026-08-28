@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import field_validator
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "InstallOps API"
@@ -6,6 +7,15 @@ class Settings(BaseSettings):
     TIMEZONE: str = "Europe/Kyiv"
 
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/installops"
+    
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def fix_postgres_url(cls, v: str) -> str:
+        if v and v.startswith("postgres://"):
+            v = v.replace("postgres://", "postgresql://", 1)
+        if v and v.startswith("postgresql://"):
+            return v.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return v
     
     # Telegram
     TELEGRAM_BOT_TOKEN: str = ""
