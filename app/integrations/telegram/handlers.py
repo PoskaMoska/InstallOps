@@ -53,10 +53,9 @@ async def cb_set_sheet(callback: CallbackQuery, state: FSMContext):
         "1. Открой нужную Google Таблицу.\n"
         "2. Перейди в «Настройки доступа» (кнопка в правом верхнем углу).\n"
         "3. Добавь сервисный email с правами Редактора:\n`installops@installops.iam.gserviceaccount.com`\n"
-        "4. Убери галочку «Уведомить пользователей» (Notify people).\n"
-        "5. Скопируй ссылку на эту таблицу.\n"
-        "6. В главном меню бота нажми кнопку «Привязать Google Таблицу» и отправь скопированную ссылку ответным сообщением.\n\n"
-        "Пример: `https://docs.google.com/spreadsheets/d/.../edit`", 
+        "4. Убери галочку «Уведомить пользователей».\n"
+        "5. Перейди в «Настройки доступа» (кнопка в правом верхнем углу).\n"
+        "6. Нажми копировать ссылку.", 
         parse_mode="Markdown"
     )
     await state.set_state(AdminStates.waiting_for_sheet)
