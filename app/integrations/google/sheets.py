@@ -48,50 +48,22 @@ class GoogleSheetsProvider:
             logger.debug("Skipping Google Sheets publish: not configured")
             return
             
-        # Format Dashboard Data
-        dashboard_values = [
-            ["Показатель", "Значение"],
-            ["Всего монтажей", stats.total_installations],
-            ["Всего заказов с переносами", stats.installations_with_postponement],
-            ["Всего переносов (фактов)", stats.total_postponements],
-            ["% переносов", f"{stats.postponement_rate:.2f}%"],
-            ["Лучший сотрудник", stats.best_employee.employee_name if stats.best_employee else "Нет данных"],
-            ["Наихудший показатель", stats.worst_employee.employee_name if stats.worst_employee else "Нет данных"]
-        ]
-
         # Format Employees Data
         employees_values = [
             [
-                "Монтажник", "Монтажей", "Заказов с переносами", "Всего переносов",
-                "1 перенос", "2 переноса", "3+ переноса", "% переносов", 
-                "Среднее", "Вина монтажника", "Клиент", "Техника", 
-                "Диспетчер", "Другие", "Рейтинг"
+                "Монтажник", "Всего переносов"
             ]
         ]
         
         for e in stats.employees:
             employees_values.append([
                 e.employee_name,
-                e.total_installations,
-                e.installations_with_postponement,
-                e.total_postponements,
-                e.one_postponement,
-                e.two_postponements,
-                e.three_plus_postponements,
-                f"{e.postponement_rate:.2f}%",
-                f"{e.average_postponements:.2f}",
-                e.reasons_breakdown.get("employee_fault", 0),
-                e.reasons_breakdown.get("client_request", 0),
-                e.reasons_breakdown.get("technical", 0),
-                e.reasons_breakdown.get("dispatcher_error", 0),
-                e.reasons_breakdown.get("other", 0) + e.reasons_breakdown.get("materials", 0) + e.reasons_breakdown.get("weather", 0) + e.reasons_breakdown.get("force_majeure", 0),
-                e.rank if e.rank else "-"
+                e.total_postponements
             ])
 
         # Atomically update multiple ranges
         data = [
-            {"range": "Dashboard!A1:B10", "values": dashboard_values},
-            {"range": "Employees!A1:O1000", "values": employees_values}
+            {"range": "Employees!A1:B1000", "values": employees_values}
         ]
         
         body = {
@@ -185,12 +157,7 @@ class GoogleSheetsProvider:
                     ).execute()
                     logger.info("Created 'Логи' sheet in Google Spreadsheet.")
                 
-            # Create Dashboard and Employees if they don't exist
-            if 'Dashboard' not in sheet_titles:
-                self.service.spreadsheets().batchUpdate(
-                    spreadsheetId=self.spreadsheet_id,
-                    body={"requests": [{"addSheet": {"properties": {"title": "Dashboard"}}}]}
-                ).execute()
+            # Create Employees if they don't exist
             if 'Employees' not in sheet_titles:
                 self.service.spreadsheets().batchUpdate(
                     spreadsheetId=self.spreadsheet_id,
