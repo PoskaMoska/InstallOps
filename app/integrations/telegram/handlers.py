@@ -50,7 +50,6 @@ async def cb_set_sheet(callback: CallbackQuery, state: FSMContext):
     if not is_admin(callback.message.chat.id): return
     await callback.message.answer(
         "📄 *Официальная инструкция по работе с ботом InstallOps*\n\n"
-        "*Раздел 1. Подключение Google Таблицы*\n"
         "1. Открой нужную Google Таблицу.\n"
         "2. Перейди в «Настройки доступа» (кнопка в правом верхнем углу).\n"
         "3. Добавь сервисный email с правами Редактора:\n`installops@installops.iam.gserviceaccount.com`\n"
