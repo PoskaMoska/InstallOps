@@ -93,7 +93,7 @@ class GoogleSheetsProvider:
         if not self._is_configured():
             return
             
-        values = [[date_str, ticket_number, employee_name, tg_id, reason]]
+        values = [[date_str, ticket_number, employee_name, reason]]
         
         body = {
             "values": values
@@ -102,7 +102,7 @@ class GoogleSheetsProvider:
         def _execute_append():
             return self.service.spreadsheets().values().append(
                 spreadsheetId=self.spreadsheet_id, 
-                range="Логи!A1:E",
+                range="Логи!A1:D",
                 valueInputOption="USER_ENTERED",
                 insertDataOption="INSERT_ROWS",
                 body=body
@@ -165,11 +165,11 @@ class GoogleSheetsProvider:
                 ).execute()
                 
             # 3. Write headers to row 1
-            headers = [["Дата", "Заявка", "Монтажник", "TG ID", "Причина"]]
+            headers = [["Дата", "Заявка", "Монтажник", "Причина"]]
             body = {"values": headers}
             self.service.spreadsheets().values().update(
                 spreadsheetId=self.spreadsheet_id,
-                range="Логи!A1:E1",
+                range="Логи!A1:D1",
                 valueInputOption="USER_ENTERED",
                 body=body
             ).execute()
