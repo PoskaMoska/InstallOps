@@ -22,7 +22,8 @@ class AdminStates(StatesGroup):
 def get_admin_keyboard():
     from app.core.config import settings
     buttons = [
-        [InlineKeyboardButton(text="🔗 Привязать Google Таблицу", callback_data="btn_set_sheet")]
+        [InlineKeyboardButton(text="🔗 Привязать Google Таблицу", callback_data="btn_set_sheet")],
+        [InlineKeyboardButton(text="📖 Инструкция Google Cloud", callback_data="btn_google_guide")]
     ]
     
     if settings.GOOGLE_SPREADSHEET_ID:
@@ -48,16 +49,34 @@ async def cmd_start(message: Message, state: FSMContext):
 async def cb_set_sheet(callback: CallbackQuery, state: FSMContext):
     if not is_admin(callback.message.chat.id): return
     await callback.message.answer(
-        "🔗 **Привязка таблицы:**\n\n"
-        "1. Открой свою таблицу.\n"
-        "2. Нажми **«Настройки доступа»** в правом верхнем углу.\n"
-        "3. Добавь эту почту как **Редактора**:\n"
-        "`installops@installops.iam.gserviceaccount.com`\n"
-        "4. Просто скинь мне ссылку на таблицу сюда в чат.\n\n"
+        "📄 *Официальная инструкция по работе с ботом InstallOps*\n\n"
+        "*Раздел 1. Подключение Google Таблицы*\n"
+        "1. Открой нужную Google Таблицу.\n"
+        "2. Перейди в «Настройки доступа» (кнопка в правом верхнем углу).\n"
+        "3. Добавь сервисный email с правами Редактора:\n`installops@installops.iam.gserviceaccount.com`\n"
+        "4. Скопируй ссылку на эту таблицу.\n"
+        "5. В главном меню бота нажми кнопку «Привязать Google Таблицу» и отправь скопированную ссылку ответным сообщением.\n\n"
         "Пример: `https://docs.google.com/spreadsheets/d/.../edit`", 
         parse_mode="Markdown"
     )
     await state.set_state(AdminStates.waiting_for_sheet)
+    await callback.answer()
+
+@router.callback_query(F.data == "btn_google_guide")
+async def cb_google_guide(callback: CallbackQuery):
+    if not is_admin(callback.message.chat.id): return
+    await callback.message.answer(
+        "☁️ *Пошаговая настройка Google Cloud (Создание сервисного аккаунта)*\n\n"
+        "1. Зайди в Google Cloud Console (console.cloud.google.com).\n"
+        "2. Создай новый проект (Create Project) и назови его, например, InstallOps.\n"
+        "3. В боковом меню выбери «APIs & Services» ➔ «Library». Найди и включи **Google Sheets API**.\n"
+        "4. Перейди в «APIs & Services» ➔ «Credentials».\n"
+        "5. Нажми «Create Credentials» ➔ «Service Account».\n"
+        "6. Введи имя (например, installops-bot) и нажми Done. Появится сервисный email.\n"
+        "7. Нажми на созданный аккаунт, перейди во вкладку «Keys» ➔ «Add Key» ➔ «Create new key» ➔ Формат JSON.\n"
+        "8. Скачанный файл открой в блокноте, скопируй весь текст и вставь его в переменную `GOOGLE_SERVICE_ACCOUNT_JSON` в настройках Railway.",
+        parse_mode="Markdown"
+    )
     await callback.answer()
 
 import re
