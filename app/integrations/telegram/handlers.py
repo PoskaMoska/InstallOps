@@ -149,7 +149,7 @@ async def handle_group_messages(message: Message, state: FSMContext):
             if not emp:
                 emp = Employee(
                     external_id=f"tg-{message.from_user.id}",
-                    telegram_user_id=str(message.from_user.id),
+                    telegram_user_id=message.from_user.id,
                     name=real_name,
                     status="active"
                 )
