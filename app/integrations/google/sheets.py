@@ -155,16 +155,47 @@ class GoogleSheetsProvider:
             sheets = spreadsheet.get('sheets', [])
             sheet_titles = [s['properties']['title'] for s in sheets]
             
-            # 2. If 'Логи' doesn't exist, create it
+            # 2. If 'Логи' doesn't exist, create or rename it
             if 'Логи' not in sheet_titles:
-                add_sheet_request = {
-                    "requests": [{"addSheet": {"properties": {"title": "Логи"}}}]
-                }
+                target_sheet = next((s for s in sheets if s['properties']['title'] in ['Лист1', 'Sheet1']), None)
+                if target_sheet:
+                    rename_request = {
+                        "requests": [{
+                            "updateSheetProperties": {
+                                "properties": {
+                                    "sheetId": target_sheet['properties']['sheetId'],
+                                    "title": "Логи"
+                                },
+                                "fields": "title"
+                            }
+                        }]
+                    }
+                    self.service.spreadsheets().batchUpdate(
+                        spreadsheetId=self.spreadsheet_id,
+                        body=rename_request
+                    ).execute()
+                    logger.info("Renamed default sheet to 'Логи'.")
+                else:
+                    add_sheet_request = {
+                        "requests": [{"addSheet": {"properties": {"title": "Логи"}}}]
+                    }
+                    self.service.spreadsheets().batchUpdate(
+                        spreadsheetId=self.spreadsheet_id,
+                        body=add_sheet_request
+                    ).execute()
+                    logger.info("Created 'Логи' sheet in Google Spreadsheet.")
+                
+            # Create Dashboard and Employees if they don't exist
+            if 'Dashboard' not in sheet_titles:
                 self.service.spreadsheets().batchUpdate(
                     spreadsheetId=self.spreadsheet_id,
-                    body=add_sheet_request
+                    body={"requests": [{"addSheet": {"properties": {"title": "Dashboard"}}}]}
                 ).execute()
-                logger.info("Created 'Логи' sheet in Google Spreadsheet.")
+            if 'Employees' not in sheet_titles:
+                self.service.spreadsheets().batchUpdate(
+                    spreadsheetId=self.spreadsheet_id,
+                    body={"requests": [{"addSheet": {"properties": {"title": "Employees"}}}]}
+                ).execute()
                 
             # 3. Write headers to row 1
             headers = [["Дата", "Заявка", "Монтажник", "TG ID", "Причина"]]
