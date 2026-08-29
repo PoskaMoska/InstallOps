@@ -17,15 +17,15 @@ class GoogleSheetsProvider:
     """
     def __init__(self):
         self.spreadsheet_id = settings.GOOGLE_SPREADSHEET_ID
-        self.creds_file = settings.GOOGLE_SERVICE_ACCOUNT_FILE
+        self.creds_file = getattr(settings, "GOOGLE_SERVICE_ACCOUNT_FILE", None)
         self.service = None
         
-        if not self._is_configured():
+        json_creds = getattr(settings, "GOOGLE_SERVICE_ACCOUNT_JSON", "")
+        if not self.spreadsheet_id or (not self.creds_file and not json_creds):
             logger.warning("Google credentials not found. Google Sheets integration is disabled.")
             return
             
         try:
-            json_creds = getattr(settings, "GOOGLE_SERVICE_ACCOUNT_JSON", "")
             if json_creds:
                 creds_dict = json.loads(json_creds)
                 creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
