@@ -63,7 +63,7 @@ class GoogleSheetsProvider:
 
         # Atomically update multiple ranges
         data = [
-            {"range": "Employees!A1:B1000", "values": employees_values}
+            {"range": "Монтажники!A1:B1000", "values": employees_values}
         ]
         
         body = {
@@ -158,10 +158,10 @@ class GoogleSheetsProvider:
                     logger.info("Created 'Логи' sheet in Google Spreadsheet.")
                 
             # Create Employees if they don't exist
-            if 'Employees' not in sheet_titles:
+            if 'Монтажники' not in sheet_titles:
                 self.service.spreadsheets().batchUpdate(
                     spreadsheetId=self.spreadsheet_id,
-                    body={"requests": [{"addSheet": {"properties": {"title": "Employees"}}}]}
+                    body={"requests": [{"addSheet": {"properties": {"title": "Монтажники"}}}]}
                 ).execute()
                 
             # 3. Write headers to row 1
